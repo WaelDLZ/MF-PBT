@@ -18,33 +18,51 @@ def load_config():
     parser = _create_argument_parser()
     args = parser.parse_args()
 
-    # Handle default example case
-    if args.env is None and args.hpo is None:
+    # Handle config file loading vs automatic selection
+    if args.config_file is not None:
+        config = _load_config_from_file(args.config_file)
+        hpo_choice = "mfpbt"  # Default, can be overridden by args
+    elif args.env is not None and args.hpo is not None:
+        config_file = _get_config_file_path(args.env, args.hpo)
+        config = _load_config_from_file(config_file)
+        hpo_choice = args.hpo
+    else:
         return _load_example_config()
 
-    # Validate arguments
-    _validate_arguments(args)
+    # Validate arguments if env/hpo provided
+    if args.env is not None or args.hpo is not None:
+        _validate_arguments(args)
+        if args.hpo is not None:
+            hpo_choice = args.hpo
 
-    # Load configuration file
-    config_file = _get_config_file_path(args.env, args.hpo)
-    config = _load_and_update_config(config_file, args)
+    # Update config with command line arguments
+    config = _update_config_with_args(config, args)
 
     # Handle variance-exploitation mode
     if args.variance_exploitation:
-        config = _apply_variance_exploitation_mode(config, args.hpo)
+        config = _apply_variance_exploitation_mode(config, hpo_choice)
 
-    # Set default experiment name if not provided
-    if args.exp_name is None:
-        config["exp_name"] = _generate_experiment_name(args, config)
+    # Set experiment name (either from args or generate default)
+    if args.exp_name is not None:
+        config["exp_name"] = args.exp_name
+    else:
+        config["exp_name"] = _generate_experiment_name(args, config, hpo_choice)
 
-    return config, args.hpo
+    return config, hpo_choice
 
 
 def _create_argument_parser():
     """Create and configure argument parser."""
     parser = argparse.ArgumentParser(description="MF-PBT Hyperparameter Optimization")
 
-    # Required arguments
+    # Config file option
+    parser.add_argument(
+        "--config-file",
+        type=str,
+        help="Path to configuration file (overrides env/hpo automatic selection)"
+    )
+
+    # Environment and algorithm selection
     parser.add_argument("--env", type=str, help="Environment name")
     parser.add_argument("--hpo", type=str, help="HPO algorithm")
 
@@ -137,47 +155,82 @@ def _apply_variance_exploitation_mode(config: dict, hpo_choice: str) -> dict:
     return config
 
 
-def _generate_experiment_name(args, config: dict) -> str:
+def _get_config_file_path(env_choice: str, hpo_choice: str) -> str:
+    """Get the configuration file path based on environment and HPO algorithm."""
+    # Map algorithm choices to config file names
+    config_file_map = {
+        "pbt": "pbt.yml",
+        "mfpbt": "mfpbt.yml", 
+        "ablation": "mfpbt.yml",  # Uses same config as mfpbt
+        "pb2": "pb2.yml",
+        "random_search": "pbt.yml",  # Uses PBT config with no exploration
+        "do_nothing": "pbt.yml"
+    }
+    
+    config_filename = config_file_map.get(hpo_choice, "mfpbt.yml")
+    
+    return os.path.join(
+        PATH_TO_MAIN_PROJECT, f"configurations/{env_choice}/{config_filename}"
+    )
+
+
+def _load_config_from_file(config_file: str) -> dict:
+    """Load configuration from YAML file."""
+    try:
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        return config
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Configuration file not found: {config_file}")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Error parsing YAML file {config_file}: {e}")
+
+
+def _update_config_with_args(config: dict, args) -> dict:
+    """Update configuration with command line arguments, handling name mappings."""
+    
+    # Mapping from argument names to config keys
+    arg_to_config_map = {
+        "env": "env_name",
+        "jax_seed": "jax_seed",
+        "numpy_seed": "numpy_seed", 
+        "num_agents": "num_agents",
+        "num_envs_per_agent": "num_envs_per_agent",
+        "num_rounds": "num_rounds",
+        "num_timesteps_round": "num_timesteps_round",
+        "frequencies": "frequencies",
+        "logging_directory": "logging_directory"
+    }
+    
+    for arg_name, value in args._get_kwargs():
+        if value is not None:
+            # Map argument name to config key
+            config_key = arg_to_config_map.get(arg_name, arg_name)
+            
+            # Only update if the config key exists or is expected
+            if config_key in config or arg_name in ["env", "frequencies", "logging_directory"]:
+                config[config_key] = value
+    
+    return config
+
+
+def _generate_experiment_name(args, config: dict, hpo_choice: str) -> str:
     """Generate default experiment name."""
+    env_name = getattr(args, 'env', config.get('env_name', 'unknown'))
     suffix = "_variance_exploit" if args.variance_exploitation else ""
-    return f"{args.hpo}/{args.env}/n_agents_{config['num_agents']}{suffix}"
+    return f"{hpo_choice}/{env_name}/n_agents_{config['num_agents']}{suffix}"
 
 
 def _load_example_config():
     """Load example configuration for default case."""
-    env_choice = "inverted_pendulum"
+    env_choice = "hopper"
     hpo_choice = "mfpbt"
-    config_file = os.path.join(PATH_TO_MAIN_PROJECT, "configurations/example.yml")
+    config_file = os.path.join(PATH_TO_MAIN_PROJECT, f"configurations/{env_choice}/mfpbt.yml")
 
-    config = yaml.safe_load(open(config_file))
+    config = _load_config_from_file(config_file)
     config["exp_name"] = f"{hpo_choice}/{env_choice}/n_agents_{config['num_agents']}"
 
     return config, hpo_choice
-
-
-def _get_config_file_path(env_choice: str, hpo_choice: str) -> str:
-    """Get the configuration file path based on environment and HPO algorithm."""
-    config_algo = "random_search" if hpo_choice == "random_search" else hpo_choice
-
-    return os.path.join(
-        PATH_TO_MAIN_PROJECT, f"configurations/{env_choice}/{config_algo}.yml"
-    )
-
-
-def _load_and_update_config(config_file: str, args) -> dict:
-    """Load configuration from file and update with command line arguments."""
-    config = yaml.safe_load(open(config_file))
-
-    # Update them if needed
-    for arg in args._get_kwargs():
-        (key, value) = arg
-        # Handle argument name mapping
-        if key == "logging_directory":
-            key = "logging_directory"
-        if value is not None and key in config.keys():
-            config[key] = value
-
-    return config
 
 
 if __name__ == "__main__":

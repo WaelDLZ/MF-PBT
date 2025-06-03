@@ -4,20 +4,18 @@ This repository contains the official implementation of **Multiple-Frequencies P
 
 **Technical Notes**: This codebase uses the [Brax](https://github.com/google/brax) library for continuous control environments and adapts PPO implementation from Brax's repository. [JAX](https://github.com/google/jax) is used to efficiently manage populations of agents in parallel across multiple devices. The code will automatically utilize all available GPUs - use `CUDA_VISIBLE_DEVICES` to control GPU usage.
 
-
 ## Supported Algorithms
 
 - **MF-PBT** (`mfpbt`): Our proposed Multiple-Frequencies Population-Based Training
 - **PBT** (`pbt`): Standard Population-Based Training baseline
 - **PB2** (`pb2`): Population-Based Bandits baseline, adapted from [this repo](https://github.com/jparkerholder/PB2)
-- **RS** (`random_search`): Random search baseline
+- **Random Search** (`random_search`): Random search baseline
 - **Ablation** (`ablation`): Ablation on the asymmetric migration, corresponds to section 5.2 of the paper
-- **Do Nothing** (`do_nothing`): Control baseline, used in section 4.3 of the paper.
-
+- **Do Nothing** (`do_nothing`): Control baseline, used in section 4.3 of the paper
 
 ## Installation
 
-Please refer to the [Jax installation guide](https://jax.readthedocs.io/en/latest/installation.html) for detailed instructions, on installing JAX with GPU support.
+Please refer to the [Jax installation guide](https://jax.readthedocs.io/en/latest/installation.html) for detailed instructions on installing JAX with GPU support.
 
 ```bash
 # Clone the repository
@@ -36,6 +34,14 @@ pip install -r requirements.txt
 python main.py --env halfcheetah --hpo mfpbt --exp-name my_experiment --num-agents 32
 ```
 
+### Using Configuration Files
+
+You can also specify a custom configuration file:
+
+```bash
+python main.py --config-file configurations/halfcheetah/mfpbt.yml --exp-name my_experiment
+```
+
 ### Variance-Exploitation Mode
 
 Run algorithms in variance-exploitation mode where hyperparameters remain fixed but PBT is used for model selection:
@@ -49,20 +55,35 @@ python main.py --env halfcheetah --hpo mfpbt --variance-exploitation --num-agent
 ### Basic Command Structure
 
 ```bash
+# Using automatic config selection
 python main.py --env ENV_NAME --hpo ALGORITHM [options]
+
+# Using specific config file
+python main.py --config-file CONFIG_PATH [options]
+
+# Running with default example (hopper + mfpbt)
+python main.py [options]
 ```
 
 ### Key Arguments
 
+**Core Arguments:**
 - `--env`: Environment (`ant`, `halfcheetah`, `hopper`, `humanoid`, `pusher`, `walker2d`)
 - `--hpo`: Algorithm (`mfpbt`, `pbt`, `pb2`, `random_search`, `ablation`, `do_nothing`)
-- `--exp-name`: Experiment name for logging
+- `--config-file`: Path to custom configuration file (overrides `--env`/`--hpo` selection)
+
+**Experiment Control:**
+- `--exp-name`: Experiment name for logging (auto-generated if not provided)
 - `--variance-exploitation`: Enable variance-exploitation mode
 - `--num-agents`: Number of agents in population
 - `--num-rounds`: Number of training rounds
-- `--frequencies`: Evolution frequencies for MF-PBT (e.g., `--frequencies 1 10 25 50`)
 - `--num-timesteps-round`: Environment steps per round ($t_{\mathrm{ready}}$ parameter from paper)
 - `--num-envs-per-agent`: Number of Brax environments per agent
+
+**MF-PBT Specific:**
+- `--frequencies`: Evolution frequencies for MF-PBT (e.g., `--frequencies 1 10 25 50`)
+
+**Logging & Seeds:**
 - `--logging-directory`: Custom logging directory (defaults to `runs/` in project directory)
 - `--jax-seed`: JAX seed for training and environment simulations (default: 0)
 - `--numpy-seed`: NumPy seed for hyperparameter initialization (default: 0)
@@ -114,6 +135,17 @@ runs/
         └── ...
 ```
 
+### Experiment Name Generation
+
+If no `--exp-name` is provided, the system auto-generates names using the pattern:
+```
+{algorithm}/{environment}/n_agents_{num_agents}
+```
+
+For example: `mfpbt/halfcheetah/n_agents_32`
+
+With variance-exploitation mode: `mfpbt/halfcheetah/n_agents_32_variance_exploit`
+
 ### Custom Logging Directory
 
 To log experiments to a custom directory (e.g., network storage, cloud mount):
@@ -151,12 +183,10 @@ index,parent,reward,env_steps,entropy_cost,learning_rate
 To resume an interrupted experiment:
 ```bash
 # Simply rerun with the same experiment name and logging-directory (if used)
-python main.py --env hopper --hpo pbt --exp-name my_experiment --num-agents 4
+python main.py --env halfcheetah --hpo mfpbt --exp-name my_experiment --num-agents 32
 ```
 
 The system automatically detects existing logs and resumes from the last completed round.
-
-
 
 ## Citation
 
