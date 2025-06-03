@@ -1,0 +1,75 @@
+# Example Configuration File for MF-PBT
+# This file demonstrates all available configuration options with detailed explanations
+
+# Environment Configuration
+env_name: 'hopper'  # Brax environment name: ant, halfcheetah, hopper, humanoid, pusher, walker2d
+backend: 'positional'  # Brax backend: 'positional' (recommended) 'spring' or 'generalized'
+
+# Experiment Parameters
+num_rounds: 1000  # Total number of evolution rounds
+num_timesteps_round: 1_000_000  # Environment steps per round (t_ready parameter from paper)
+
+# Population Settings
+num_envs_per_agent: 1024  # Number of parallel Brax environments per agent
+num_agents: 32  # Total number of agents in population (must be divisible by num_frequencies for MF-PBT)
+frequencies: [1, 10, 25, 50]  # Evolution frequencies for MF-PBT (only used with mfpbt algorithm)
+
+# Random Seeds
+numpy_seed: 0  # Seed for NumPy random number generator (hyperparameter initialization)
+jax_seed: 0  # Seed for JAX random number generator (training and environment)
+
+# Logging
+logging_directory: null  # Custom logging directory (null = use default runs/ folder)
+
+# PPO Training Configuration, see Brax documentation for details.
+# These are the hyperparameters that can't be optimized and are common to all agents.
+# To optimize them, one should modify the codebase to manage non-continuous hyperparameters.
+training_config:
+  unroll_length: 10
+  episode_length: 1_000
+  num_envs: 64
+  num_minibatches: 32
+  batch_size: 512
+  num_updates_per_batch: 8
+  num_eval_envs: 256
+  num_evals: 2
+  deterministic_eval: True
+  normalize_advantage: True
+
+# Hyperparameter Search Space
+# Define which hyperparameters to optimize and their initialization methods.
+hpo_search_space:
+  learning_rate:
+    init_min: -5  # 10^-5 (log scale minimum)
+    init_max: -3  # 10^-3 (log scale maximum)
+    method: 'log_uniform'  # Initialization method: log_uniform, uniform, or log_grid
+  entropy_cost:
+    init_min: -3  # 10^-3 (log scale minimum)
+    init_max: -1  # 10^-1 (log scale maximum)
+    method: 'log_uniform'
+
+# Default Hyperparameters
+# Fixed hyperparameters that are not optimized, but could be optimized if desired.
+default_hps:
+  learning_rate: 0.0003  # Default learning rate (overridden if in search space)
+  entropy_cost: 0.001  # Default entropy cost (overridden if in search space)
+  discounting: 0.997  # Discount factor for rewards
+  clipping_epsilon: 0.2  # PPO clipping parameter
+  gae_lambda: 0.95  # GAE lambda parameter
+  reward_scaling: 5  # Reward scaling factor
+
+# Exploitation/Exploration Routines
+routines:
+  explore: # Exploration routine needs to be specified for each optimized hyperparameter.
+    learning_rate:
+      function_name: 'perturbation'  # Perturbation by a factor as in the PBT paper
+      function_params:
+        factors: [0.8, 1.25]
+    entropy_cost:
+      function_name: 'perturbation'
+      function_params:
+        factors: [0.8, 1.25]
+
+  exploit: # Exploitation routine, used to select who dies, who survives, and who is copied. This is ignored in MF-PBT.
+    function_name: 'truncation' # see hpo/utils/exploit_functions.py for available functions
+    function_param : 0.25

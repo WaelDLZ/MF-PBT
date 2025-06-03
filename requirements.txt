@@ -1,0 +1,8 @@
+-f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+brax
+jax[cuda12_pip]<0.6
+matplotlib<3.10
+pandas
+pyyaml
+scikit-learn
+GPy

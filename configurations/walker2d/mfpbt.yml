@@ -1,0 +1,61 @@
+# Config file for Population-Based Training
+
+env_name: 'walker2d'
+backend: 'positional'
+
+num_rounds: 1000
+num_timesteps_round: 1_000_000
+
+num_envs_per_agent: 1024
+num_agents: 24
+numpy_seed: 0
+jax_seed: 0
+
+frequencies: [1, 10, 25, 50]
+
+logging_directory: null
+
+training_config:
+  unroll_length: 10
+  episode_length: 1_000
+  num_envs: 64
+  num_minibatches: 32
+  batch_size: 512
+  num_updates_per_batch: 8
+  num_eval_envs: 256
+  num_evals: 2
+  deterministic_eval: True
+  normalize_advantage: True
+
+hpo_search_space:
+  entropy_cost: # give exposant only
+    method: 'log_uniform'
+    init_min: -3
+    init_max: -1
+
+  learning_rate: # give exposant only
+    method: 'log_uniform'
+    init_min: -5
+    init_max: -3
+
+
+default_hps:
+  learning_rate: 0.0003
+  entropy_cost: 0.001
+  discounting: 0.997
+  clipping_epsilon: 0.2
+  gae_lambda: 0.95
+  reward_scaling: 5
+
+routines:
+  explore:
+    learning_rate:
+      function_name: 'perturbation'
+      function_params:
+        factors: [0.8, 1.25]
+    entropy_cost:
+      function_name: 'perturbation'
+      function_params:
+        factors: [0.8, 1.25]
+
+exploit:
