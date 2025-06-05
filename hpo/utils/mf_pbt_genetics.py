@@ -17,16 +17,12 @@ def genetics(
     frequencies: List[int],
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Perform MF-PBT genetic algorithm operations.
+    This function implements the evolution step of the MF-PBT algorithm.
 
-    Args:
-        global_ranking_indexes: Global agent ranking (best to worst)
-        local_ranking_indexes: Per-population agent rankings
-        round_index: Current training round
-        frequencies: Evolution frequencies for each population
+    It determines which populations should evolve based on the round index and their frequencies,
+    and performs internal exploitation and asymmetric migration between populations.
 
-    Returns:
-        Tuple of (parents_hps, parents_network, need_explore)
+    For implementation in other frameworks, this is the essential logic to port.
     """
     # Determine which populations should evolve this round
     num_populations = len(frequencies)

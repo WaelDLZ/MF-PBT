@@ -1,5 +1,7 @@
 # MF-PBT: Multiple-Frequencies Population-Based Training
 
+[![arXiv](https://img.shields.io/badge/arXiv-2506.03225-b31b1b.svg)](https://arxiv.org/abs/2506.03225)
+
 This repository contains the official implementation of **Multiple-Frequencies Population-Based Training (MF-PBT)**, a novel hyperparameter optimization algorithm that addresses the greediness issues in standard Population-Based Training (PBT).
 
 **Technical Notes**: This codebase uses the [Brax](https://github.com/google/brax) library for continuous control environments and adapts PPO implementation from Brax's repository. [JAX](https://github.com/google/jax) is used to efficiently manage populations of agents in parallel across multiple devices. The code will automatically utilize all available GPUs - use `CUDA_VISIBLE_DEVICES` to control GPU usage.
@@ -14,6 +16,8 @@ This repository contains the official implementation of **Multiple-Frequencies P
 - **Do Nothing** (`do_nothing`): Control baseline, used in section 4.3 of the paper
 
 ## Installation
+
+Tested on Python 3.11
 
 Please refer to the [Jax installation guide](https://jax.readthedocs.io/en/latest/installation.html) for detailed instructions on installing JAX with GPU support.
 
@@ -193,7 +197,15 @@ The system automatically detects existing logs and resumes from the last complet
 If you use this code in your research, please cite our paper:
 
 ```bibtex
-...
+@misc{doulazmi2025mfpbt,
+title={Multiple-Frequencies Population-Based Training},
+author={Waël Doulazmi and Auguste Lehuger and Marin Toromanoff and Valentin Charraut and Thibault Buhet and Fabien Moutarde},
+year={2025},
+eprint={2506.03225},
+archivePrefix={arXiv},
+primaryClass={cs.LG},
+url={https://arxiv.org/abs/2506.03225},
+}
 ```
 
 ## License

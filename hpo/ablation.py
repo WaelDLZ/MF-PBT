@@ -92,11 +92,17 @@ class MultipleFrequenciesPopulationBasedTraining:
         self.populations = None
 
         assert num_agents % self.num_populations == 0, (
-            "For now, we expect all the populations to be of the same size"
+            f"For MF-PBT ablation, all populations must be the same size. "
+            f"Currently: num_agents ({num_agents}) is not divisible by num_populations ({self.num_populations}). "
+            f"Please adjust num_agents to be divisible by the number of frequencies ({len(frequencies)})."
         )
 
         assert self.num_agents_per_population % 4 == 0, (
-            "In order to apply the MF-PBT algorithm we need to split populations in 4."
+            f"For MF-PBT algorithm, we need to split each population into 4 quarters. "
+            f"Currently: agents_per_population ({self.num_agents_per_population}) is not divisible by 4. "
+            f"With {num_agents} agents and {self.num_populations} populations, you have "
+            f"{self.num_agents_per_population} agents per population. "
+            f"Please adjust num_agents so that (num_agents ÷ num_frequencies) is divisible by 4."
         )
 
         # Load env
@@ -116,7 +122,9 @@ class MultipleFrequenciesPopulationBasedTraining:
             routines["explore"] is None
             or hpo_search_space.keys() == routines["explore"].keys()
         ), (
-            "An exploration function AND a search space mustbe specified for all hyperparameters you wish to optimize"
+            f"Exploration functions must be specified for all hyperparameters in the search space. "
+            f"Search space keys: {list(hpo_search_space.keys())}, "
+            f"Exploration keys: {list(routines['explore'].keys() if routines['explore'] else [])}"
         )
 
         self.hpo_keys = list(hpo_search_space.keys())
@@ -165,10 +173,16 @@ class MultipleFrequenciesPopulationBasedTraining:
         self._initiate_experiment()
 
     def _assert_config(self):
-        assert (
-            self.training_config["num_minibatches"] * self.training_config["batch_size"]
-            >= self.training_config["num_envs"]
-        ), "You can't perform training if you have more envs than steps in a batch."
+        num_envs = self.training_config["num_envs"]
+        num_minibatches = self.training_config["num_minibatches"]
+        batch_size = self.training_config["batch_size"]
+        
+        assert num_minibatches * batch_size >= num_envs, (
+            f"You can't perform training if you have more envs than steps in a batch. "
+            f"Currently: num_minibatches ({num_minibatches}) * batch_size ({batch_size}) = "
+            f"{num_minibatches * batch_size} < num_envs ({num_envs}). "
+            f"Please increase batch_size or num_minibatches, or reduce num_envs."
+        )
 
         env_step_per_training_step = (
             self.training_config["batch_size"]
@@ -184,7 +198,8 @@ class MultipleFrequenciesPopulationBasedTraining:
             f"Note: regarding the arguments given in training config, the agents will perform"
             f" {num_training_steps_per_epoch} training steps at each round. \n"
             f"And one training step requires {env_step_per_training_step} environment steps.\n"
-            f"So in total the number of env steps per round will be {num_training_steps_per_epoch * env_step_per_training_step}\n"
+            f"So the actual number of env steps per round will be {num_training_steps_per_epoch * env_step_per_training_step}\n"
+            f"Instead of {self.training_config['num_timesteps']} per round.\n"
             f"And the total experiment will use {self.num_rounds * num_training_steps_per_epoch * env_step_per_training_step} steps per agent.\n",
         )
 
